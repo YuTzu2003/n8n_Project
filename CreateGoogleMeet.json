@@ -1,0 +1,515 @@
+{
+  "name": "CreateGoogleMeet",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linewebhook",
+        "options": {}
+      },
+      "id": "e23466d0-bea9-47e4-a4a1-544646d671ba",
+      "name": "LINE Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -2140,
+        -20
+      ],
+      "webhookId": "49fa0332-10d5-4fa9-91ca-9261911e51b7"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "id": "fcc74acf-d53c-4fc1-8ad2-5818bd4f1a89",
+      "name": "Gemini Parser",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1860,
+        160
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "1xPYoon7Tv9YPZa7",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "={{ $('Google Calendar1').item.json.summary }}",
+        "message": "=您好，\n您已被邀請參加以下會議：\n\n⭐主題：{{ $('Google Calendar1').item.json.summary }}\n📅時間：{{ $('Google Calendar1').item.json.start.dateTime.replace('T', ' ').slice(0, 16) }} - {{ $('Google Calendar1').item.json.end.dateTime.replace('T', ' ').slice(0, 16) }}\n🔗Google Meet連結：{{ $('Google Calendar1').item.json.conferenceData.entryPoints[0].uri }}\n🔔請您準時參與此次會議，如有任何問題歡迎提前聯絡會議主辦人。\n\n謝謝！\n",
+        "toList": [
+          "={{ $json.attendees }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "b1f924ab-071f-47c7-ba47-f64b87414931",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        240
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IKaHAiqYaYRyXR2m",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let requests\nlet message = {}\nfor (const item of $input.all()) {\n  requests = item.json.body\n}\nif ('events' in requests) {\n  if ('message' in requests['events'][0]) {\n    if (requests['events'][0]['message']['type'] == 'text' &&\n        'text' in requests['events'][0]['message']) {\n      message = {\n        'chatInput': requests['events'][0]['message']['text'],\n        'replyToken': requests['events'][0]['replyToken']\n      }\n    }\n  }\n}\nreturn message"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1960,
+        -20
+      ],
+      "id": "8b7df7f9-fb1d-4c5f-beff-fa4ab8bd2ec7",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=請幫我從以下訊息中提取會議的詳細資訊，並以 JSON 格式輸出。如果訊息中未提供具體的日期，沒有跟會議有關，請將IsCreate設定為false，並不生成以下規定內容，而生成創建失敗的錯誤訊息，那如果未給更明確的時間點，時分，startTime 設定為該天的上午 12 點，並將 endTime 設定為開始時間加上五個小時，要包括以下內容\n- summary（會議主旨）\n- startTime（ISO 8601）\n- endTime（ISO 8601）\n- description（會議說明）\n- attendees（Gmail 陣列）\n- IsGmail(是否有GMAIL)\n- IsCreate(是否創建GoogleMeet)\n使用者訊息如下：\n{{ $json.chatInput }}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        -1820,
+        -20
+      ],
+      "id": "c1dcdffb-db73-4984-bed8-628072ef36d2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "chia0230999@gmail.com",
+          "mode": "list",
+          "cachedResultName": "chia0230999@gmail.com"
+        },
+        "start": "={{ $json.startTime }}",
+        "end": "={{ $json.endTime }}",
+        "additionalFields": {
+          "conferenceDataUi": {
+            "conferenceDataValues": {
+              "conferenceSolution": "={\n  \"conferenceData\": {\n    \"createRequest\": {\n      \"requestId\": \"meeting_{{ $json.startTime}}\",\n      \"conferenceSolutionKey\": {\n        \"type\": \"hangoutsMeet\"\n      }\n    }\n  }\n}\n"
+            }
+          },
+          "description": "={{ $json.description }}",
+          "summary": "={{ $json.summary }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -1320,
+        240
+      ],
+      "id": "e274377f-8cfe-4391-8be2-88a0f8e7bd3a",
+      "name": "Google Calendar1",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "X5n0y2BrthAzlBH1",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('Code').item.json.replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{{ $json.errorMessage }}\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1520,
+        480
+      ],
+      "id": "ad7f41f1-4010-4f71-bb08-1b7f60f09bd1",
+      "name": "Error Message",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Eox0IvgroR4238DE",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('Code').item.json.replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"☑️已成功幫您建立會議\\n⭐主題：{{ $('Google Calendar1').item.json.summary }}\\n📅時間：{{ $('Google Calendar1').item.json.start.dateTime.replace('T', ' ').slice(0, 16) }} - {{ $('Google Calendar1').item.json.end.dateTime.replace('T', ' ').slice(0, 16) }}\\n🔗您的Google Meet連結：{{ $('Google Calendar1').item.json.conferenceData.entryPoints[0].uri }}\\n\\n🔔請記得準時參加會議，別放生其他會議參與者喔!\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1020,
+        440
+      ],
+      "id": "d2386553-a4b3-4393-a594-62b90aa6b108",
+      "name": "NoGmail Message",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Eox0IvgroR4238DE",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9b48b6b6-2781-45c2-9c9f-57c419dcf723",
+              "leftValue": "={{ $('Code3').item.json.IsGmail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1160,
+        380
+      ],
+      "id": "1c0d0413-7b87-497d-bc77-0c7821667d24",
+      "name": "IsGmail"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cebc7341-667b-41cc-b304-e2341839b1ef",
+              "leftValue": "={{ $json.IsCreate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1700,
+        320
+      ],
+      "id": "d36bfab2-0089-4c2f-9ab8-f8442732f94c",
+      "name": "IsCreate"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('Code').item.json.replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"☑️會議已建立成功並通知參與者！\\n⭐主題：{{ $('Google Calendar1').item.json.summary }}\\n📅時間：{{ $('Google Calendar1').item.json.start.dateTime.replace('T', ' ').slice(0, 16) }} - {{ $('Google Calendar1').item.json.end.dateTime.replace('T', ' ').slice(0, 16) }}\\n🔗您的Google Meet連結：{{ $('Google Calendar1').item.json.conferenceData.entryPoints[0].uri }}\\n📨已寄送 Gmail 通知給所有參與者：{{ $('Code4').item.json.attendees }}\\n🔔請記得準時開會，不要放生大家喔～\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -720,
+        240
+      ],
+      "id": "b9537fe9-e4be-4e74-85d4-7042f0525d22",
+      "name": "Message",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Eox0IvgroR4238DE",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputRaw = $json[\"output\"];\nconst match = outputRaw.match(/```json\\n([\\s\\S]*?)\\n```/);\nconst parsed = JSON.parse(match[1]);\nreturn [\n  {\n    json: {\n      IsCreate: parsed.IsCreate,\n      errorMessage: parsed.errorMessage\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1460,
+        -20
+      ],
+      "id": "cc880864-fcb9-4e1b-be6b-d4256edfe14a",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputRaw = $('AI Agent').first().json.output;\nconst match = outputRaw.match(/```json\\n([\\s\\S]*?)\\n```/);\nconst parsed = JSON.parse(match[1]);\nreturn [\n    {\n      json: {\n        summary: parsed.summary,\n        startTime: parsed.startTime,\n        endTime: parsed.endTime,\n        description: parsed.description,\n        IsGmail: parsed.IsGmail,\n        attendees: parsed.attendees\n      }\n    }\n  ];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1520,
+        280
+      ],
+      "id": "42d3d710-b47e-4d64-9030-c5ad47c62369",
+      "name": "Code3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $node[\"Code3\"].json.attendees;\n\nconst attendees = Array.isArray(raw)\n  ? raw.filter(e => e.includes('@'))\n  : (raw || '').split(',').map(e => e.trim()).filter(e => e.includes('@'));\n\nreturn [{ json: { attendees } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1020,
+        240
+      ],
+      "id": "59152229-9319-4365-86b0-2adc4873597c",
+      "name": "Code4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "LINE Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Parser": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar1": {
+      "main": [
+        [
+          {
+            "node": "IsGmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsGmail": {
+      "main": [
+        [
+          {
+            "node": "Code4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoGmail Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsCreate": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "IsCreate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code4": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1052d16b-edda-4de0-953b-ffeb80ec9769",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3a34ad495ded7888fbfa00c6e48404e462c224f632a71b5b11414b9491426841"
+  },
+  "id": "QDp16o8C6w9YEmrZ",
+  "tags": [
+    {
+      "createdAt": "2025-04-26T17:06:32.957Z",
+      "updatedAt": "2025-04-26T17:06:32.957Z",
+      "id": "uxF7gUkUkckKX22z",
+      "name": "LineBot"
+    },
+    {
+      "createdAt": "2025-04-26T17:06:46.021Z",
+      "updatedAt": "2025-04-26T17:06:46.021Z",
+      "id": "FKFNTrJt1BJVoH69",
+      "name": "GoogleMeet"
+    },
+    {
+      "createdAt": "2025-04-26T17:06:56.621Z",
+      "updatedAt": "2025-04-26T17:06:56.621Z",
+      "id": "zXExu3oo8yuAtZjC",
+      "name": "Email"
+    },
+    {
+      "name": "AI Agent",
+      "id": "kHoBj3MZynJl1GKA",
+      "createdAt": "2025-04-26T17:07:44.149Z",
+      "updatedAt": "2025-04-26T17:07:44.149Z"
+    }
+  ]
+}

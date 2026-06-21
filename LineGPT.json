@@ -1,0 +1,255 @@
+{
+  "name": "LineGPT",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        60,
+        -140
+      ],
+      "id": "6d5b116a-3034-4bdb-89b0-a4fde14c7948",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "1xPYoon7Tv9YPZa7",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = items[0].json.text;\nlet safeText = text.replace(/\\n/g, '\\\\n').replace(/\"/g, '\\\\\"');\nreturn [{json: {safeText: safeText}}]; "
+      },
+      "id": "f13b570e-f239-40c7-8368-3b4ed9da5601",
+      "name": "Code1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "messages": {
+          "messageValues": [
+            {
+              "message": "可以說繁體中文或是英文，盡量以使用者需求"
+            }
+          ]
+        }
+      },
+      "id": "f419a1a9-b68b-4dea-8ad9-af3a222dc7a1",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        -40,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let requests\nlet message = {}\nfor (const item of $input.all()) {\n  requests = item.json.body\n}\nif ('events' in requests) {\n  if ('message' in requests['events'][0]) {\n    if (requests['events'][0]['message']['type'] == 'text' &&\n        'text' in requests['events'][0]['message']) {\n      message = {\n        'chatInput': requests['events'][0]['message']['text'],\n        'replyToken': requests['events'][0]['replyToken']\n      }\n    }\n  }\n}\nreturn message"
+      },
+      "id": "e5040782-37ed-48aa-acb9-dff81c1e5f1c",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "=json",
+        "specifyBody": "json",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonBody": "={\n  \"replyToken\": \"{{$node['Code'].json.replyToken}}\",  \n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{{$json['safeText']}}\"  \n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        -320
+      ],
+      "id": "9f32cf2e-e615-4def-bbb5-e2eb9cf2dbee",
+      "name": "HTTP Request3",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cGSkHrgkHwsnriCt",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "line-webhook",
+        "options": {}
+      },
+      "id": "3489d395-d6d7-403b-8da6-c9c2531a6982",
+      "name": "LINE Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -320
+      ],
+      "webhookId": "0e9e9d8c-b81f-4c20-b699-22b1bbcba51b"
+    }
+  ],
+  "pinData": {
+    "LINE Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "e579-125-230-162-156.ngrok-free.app",
+            "user-agent": "LineBotWebhook/2.0",
+            "content-length": "558",
+            "content-type": "application/json; charset=utf-8",
+            "x-forwarded-for": "147.92.149.165",
+            "x-forwarded-host": "e579-125-230-162-156.ngrok-free.app",
+            "x-forwarded-proto": "https",
+            "x-line-signature": "up+6VjluzXm+Xs6zuVPVEhy67jOOtskRPPQM72zX//8=",
+            "accept-encoding": "gzip"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "destination": "U831f8f52912a835eba068b7a23ed440f",
+            "events": [
+              {
+                "type": "message",
+                "message": {
+                  "type": "text",
+                  "id": "555348363114446902",
+                  "quoteToken": "VFk4neKYFyHMF5OXGNVpxpVaYAwDnM7BR5Qm2kiJgYCLdSN49FA-jO_N0mska9QuBCkLbD31htj9wXPOFHdnaCvtXFrfCIiGx24MVdh1xORwtDMoiZO9pTGBpu_Hlcxs-m1Vb7Xrpkc3dS56D_oHwA",
+                  "text": "hi"
+                },
+                "webhookEventId": "01JR2KXJKRE80ZM7064NX6MXZ2",
+                "deliveryContext": {
+                  "isRedelivery": false
+                },
+                "timestamp": 1743844723245,
+                "source": {
+                  "type": "user",
+                  "userId": "Ub3b05983561e50f8a0b7441e413d2cbc"
+                },
+                "replyToken": "915d4d92f4ea4500a7634eb52f8fbecd",
+                "mode": "active"
+              }
+            ]
+          },
+          "webhookUrl": "http://localhost:5678/webhook/line-webhook",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        []
+      ]
+    },
+    "LINE Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1290f927-1b25-47d7-9d84-a0a139364d1b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3a34ad495ded7888fbfa00c6e48404e462c224f632a71b5b11414b9491426841"
+  },
+  "id": "Nqkh3WfXdL13g9Ww",
+  "tags": [
+    {
+      "createdAt": "2025-04-05T08:48:50.495Z",
+      "updatedAt": "2025-04-05T08:48:50.495Z",
+      "id": "1KFZS9ODtPx3zTth",
+      "name": "AI"
+    }
+  ]
+}

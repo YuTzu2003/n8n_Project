@@ -1,0 +1,133 @@
+{
+  "name": "CreateTeams",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -400,
+        -40
+      ],
+      "id": "3b6cc4d1-eade-4538-b116-9160b722863e",
+      "name": "When chat message received",
+      "webhookId": "f8dacc32-2560-4c02-a5ab-faec5758cf17"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        -200,
+        -40
+      ],
+      "id": "ea3a34cc-e2c1-40ae-90f9-c6e38bd9bf52",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        160
+      ],
+      "id": "ce986dbb-fd03-4b09-9c2b-e9b55c1d643f",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "1xPYoon7Tv9YPZa7",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -40
+      ],
+      "id": "0ac40e53-62ec-43a1-8b77-c2f05548f6a2",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        380,
+        -40
+      ],
+      "id": "0e416722-08f3-464b-a5e5-0a460ceb33f8",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9ff9db5a-c5e6-45c1-b034-e92c8886323f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3a34ad495ded7888fbfa00c6e48404e462c224f632a71b5b11414b9491426841"
+  },
+  "id": "6FaINpGkGVY9JVZ7",
+  "tags": []
+}
